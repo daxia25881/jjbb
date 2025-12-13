@@ -1,63 +1,51 @@
-// 脚本名称：av_crack.js
-
 const body = $response.body;
 const url = $request.url;
 
-// 定义日志前缀
-const LOG_TAG = "[艾薇解析]";
+// 定义日志标签
+const TAG = "[AVJB解析]";
 
-// 核心逻辑函数
 function solve() {
     try {
-        // 1. 正则匹配 HTML 中的关键路径
-        // 原理：寻找类似 src=".../videos/152/93451/..." 的结构
-        // 这里的正则匹配 /videos/文件夹ID/视频ID/
-        const regex = /\/videos\/(\d+)\/(\d+)\//;
+        // 1. 定义正则：专门匹配 og:image 中的 videos_screenshots 路径
+        // 目标字符串示例：content="https://stat.avstatic.com/cdn1/contents/videos_screenshots/114000/114478/preview.jpg"
+        // 捕获组 1: FolderID (114000)
+        // 捕获组 2: VideoID (114478)
+        const regex = /videos_screenshots\/(\d+)\/(\d+)\//;
         const match = body.match(regex);
 
         if (!match) {
-            console.log(`${LOG_TAG} 未在 HTML 中找到视频 ID 线索`);
+            console.log(`${TAG} 未在 HTML 中找到 og:image 或 screenshot 路径`);
             $done({});
             return;
         }
 
-        const folderId = match[1];
-        const videoId = match[2];
-        const videoIdNum = parseInt(videoId);
-
-        console.log(`${LOG_TAG} 捕获 ID: Folder=${folderId}, Video=${videoId}`);
-
-        // 2. 根据 ID 判断服务器节点 (复用原脚本逻辑)
-        let baseURL = 'https://99newline.jb-aiwei.cc';
+        const folderId = match[1]; // 例如: 114000
+        const videoId = match[2];  // 例如: 114478
         
-        // 原脚本逻辑：
-        // if (videoIdNum > 18400 && videoIdNum < 92803) -> 99newline
-        // else if (videoIdNum >= 92803) -> 88newline
-        // else -> 99newline
-        // 简化后如下：
-        if (videoIdNum >= 92803) {
-            baseURL = 'https://88newline.jb-aiwei.cc';
+        console.log(`${TAG} 提取成功 -> Folder: ${folderId}, Video: ${videoId}`);
+
+        // 2. 拼接链接
+        // 逻辑：默认使用 99newline，如果 ID 大于 92803 则使用 88newline (符合你的示例)
+        let host = "99newline.jb-aiwei.cc";
+        if (parseInt(videoId) >= 92803) {
+            host = "88newline.jb-aiwei.cc";
         }
 
-        // 3. 拼接最终 m3u8 地址
-        const m3u8Url = `${baseURL}/videos/${folderId}/${videoId}/index.m3u8`;
-        const playUrl = m3u8Url; 
-        
-        // 如果你想生成那个特定的下载/播放工具链接，可以用下面这行代替上面：
-        // const playUrl = `https://tools.thatwind.com/tool/m3u8downloader#m3u8=${encodeURIComponent(m3u8Url)}`;
+        // 最终链接: https://88newline.jb-aiwei.cc/videos/114000/114478/index.m3u8
+        const m3u8Url = `https://${host}/videos/${folderId}/${videoId}/index.m3u8`;
 
-        // 4. 发送通知
-        // 参数：标题, 副标题, 跳转链接(点击通知触发)
+        // 3. 发送通知
+        // 点击通知会直接跳转系统播放器播放该 m3u8
         $notification.post(
-            "🔓 艾薇视频已破解", 
-            `ID: ${videoId} | 点击直接播放`, 
-            playUrl
+            "✅ 视频解析成功", 
+            `ID: ${videoId} | 点击播放`, 
+            m3u8Url
         );
 
     } catch (e) {
-        console.log(`${LOG_TAG} 错误: ${e}`);
+        console.log(`${TAG} 错误: ${e}`);
     }
-    
+
     $done({});
 }
 
